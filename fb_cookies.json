@@ -1,0 +1,26 @@
+[
+  {
+    "domain": ".facebook.com",
+    "expirationDate": 1750000000,
+    "hostOnly": false,
+    "httpOnly": true,
+    "name": "c_user",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": false,
+    "value": "61562447814876"
+  },
+  {
+    "domain": ".facebook.com",
+    "expirationDate": 1750000000,
+    "hostOnly": false,
+    "httpOnly": true,
+    "name": "xs",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": false,
+    "value": "19%3AaqHIaIr68_RhMw%3A2%3A1749032999%3A-1%3A-1"
+  }
+]
