@@ -1,0 +1,4 @@
+node_modules
+.env
+fb_cookies.json
+*.log
