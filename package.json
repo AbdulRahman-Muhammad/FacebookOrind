@@ -1,25 +1,12 @@
 {
-  "name": "orind-fb-bot",
+  "name": "collepedia-fb-bot",
   "version": "1.0.0",
-  "type": "module",
-  "description": "Automated Facebook page posting and interaction bot using datakund",
   "main": "api/cron.js",
   "scripts": {
-    "start": "node api/cron.js",
-    "dev": "vercel dev",
-    "lint": "eslint .",
-    "format": "prettier --write ."
+    "start": "vercel dev"
   },
   "dependencies": {
-    "datakund": "^1.0.27",
-    "node-fetch": "^2.7.0",
-    "winston": "^3.14.2",
-    "dotenv": "^16.4.5",
-    "chrome-aws-lambda": "^10.1.0"
-  },
-  "devDependencies": {
-    "eslint": "^8.57.0",
-    "prettier": "^3.3.3",
-    "vercel": "^33.5.0"
+    "facebook-unofficial-api": "^1.0.0",
+    "node-fetch": "^2.6.7"
   }
 }
