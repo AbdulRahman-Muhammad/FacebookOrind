@@ -1,157 +1,98 @@
-import fetch from "node-fetch";
-import { Facebook } from "facebook-unofficial-api";
+// api/cron.js
+const fetch = require('node-fetch');
+const { FacebookPrivate } = require('facebook-private-api');
+const { device, storage } = require('fbjs-skm');
 
-const API_URL    = 'https://api.shapes.inc/v1';
-const MODEL      = 'shapesinc/orind';
-const API_KEY    = 'HV1YWAUTBSH8USNZOZ6DXX6BHX9K3YKLNPLKBC816E0';
-const FB_EMAIL   = 'your_email@example.com';
-const FB_PASS    = 'your_password';
-const PAGE_ID    = '604075112798536';
-let fb; // سنخزن كائن Facebook هنا بعد تسجيل الدخول
+const API_URL = 'https://api.shapes.inc/v1';
+const MODEL = 'shapesinc/orind';
+const API_KEY = process.env.API_KEY;
+const FB_EMAIL = process.env.FB_EMAIL;
+const FB_PASS = process.env.FB_PASS;
+const PAGE_ID = process.env.PAGE_ID;
 
-async function initFacebook() {
-  fb = new Facebook();
+async function generateAI(text) {
+  const resp = await fetch(`${API_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${API_KEY}`,
+      "X-Channel-ID": "Facebook",
+      "X-User-ID": "Facebook-Posts"
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [{ role: "user", content: text }]
+    })
+  });
+  const data = await resp.json();
+  return data.choices[0].message.content.split(/\r?\n/)[0].trim();
+}
+
+async function main() {
+  const fb = new FacebookPrivate({ device, storage });
   await fb.login(FB_EMAIL, FB_PASS);
-}
 
-async function generateSinglePost() {
-  const resp = await fetch(`${API_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${API_KEY}`,
-      "X-Channel-ID": "Facebook",
-      "X-User-ID": "Facebook-Posts"
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: "user", content: "اكتب لي منشور قصير للصفحة: جملة أو جملتين." }
-      ]
-    })
-  });
-  const data = await resp.json();
-  const text = data.choices[0].message.content.split(/\r?\n/)[0].trim();
-  return text || "منشور افتراضي";
-}
-
-async function generatePostContent() {
-  const post1 = await generateSinglePost();
-  const post2 = await generateSinglePost();
-  return [post1, post2];
-}
-
-async function publishNewPost(message) {
-  return await fb.post(message, PAGE_ID);
-}
-
-async function getRecentComments(limit = 9) {
-  const allComments = [];
-  // جلب أحدث 3 منشورات من الصفحة
-  const posts = await fb.getPosts(PAGE_ID, { limit: 3 });
-  for (const post of posts) {
-    if (allComments.length >= limit) break;
-    // جلب التعليقات من كل منشور
-    const comments = await fb.getComments(post.id, { limit: limit - allComments.length });
-    for (const c of comments) {
-      allComments.push({ comment_id: c.id, message: c.message });
-      if (allComments.length >= limit) break;
-    }
-  }
-  return allComments.slice(0, limit);
-}
-
-async function replyToComment(commentId, replyText) {
-  return await fb.comment(commentId, replyText);
-}
-
-async function getRecentConversations(limit = 9) {
-  const convs = [];
-  const threads = await fb.getInbox({ limit });
-  for (const thread of threads) {
-    if (thread.unreadCount > 0) {
-      const lastMsg = thread.messages.items.slice(-1)[0];
-      if (lastMsg && lastMsg.from.id !== fb.userId) {
-        convs.push({
-          thread_id: thread.id,
-          sender_id: lastMsg.from.id,
-          message: lastMsg.body
-        });
-      }
-      if (convs.length >= limit) break;
-    }
-  }
-  return convs.slice(0, limit);
-}
-
-async function sendDM(recipientId, text) {
-  return await fb.sendMessageToUser(recipientId, text);
-}
-
-async function generateAIReplyForText(userText) {
-  const resp = await fetch(`${API_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${API_KEY}`,
-      "X-Channel-ID": "Facebook",
-      "X-User-ID": "Facebook-Posts"
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: "user", content: userText }
-      ]
-    })
-  });
-  const data = await resp.json();
-  return data.choices[0].message.content.split(/\r?\n/)[0].trim() || "عذراً، لا يمكنني الرد الآن.";
-}
-
-export default async function handler(req, res) {
-  if (!fb) {
-    await initFacebook();
-  }
-  if (req.method !== "GET" && req.method !== "POST") {
-    return res.status(405).send("Method Not Allowed");
-  }
-
-  let callsRemaining = 20;
+  let calls = 20;
   const log = [];
 
-  if (callsRemaining >= 2) {
-    const [post1, post2] = await generatePostContent();
-    const pub1 = await publishNewPost(post1);
-    log.push({ action: "publishPost", post: post1, result: pub1 });
-    callsRemaining -= 1;
-    const pub2 = await publishNewPost(post2);
-    log.push({ action: "publishPost", post: post2, result: pub2 });
-    callsRemaining -= 1;
+  if (calls >= 2) {
+    const p1 = await generateAI("اكتب لي منشور قصير للصفحة: جملة أو جملتين.");
+    await fb.page.post({ page_id: PAGE_ID, text: p1 });
+    log.push({ action: "publishPost", post: p1 });
+    calls -= 1;
+    const p2 = await generateAI("اكتب لي منشور قصير للصفحة: جملة أو جملتين.");
+    await fb.page.post({ page_id: PAGE_ID, text: p2 });
+    log.push({ action: "publishPost", post: p2 });
+    calls -= 1;
   }
 
-  if (callsRemaining > 0) {
-    const maxComments = Math.min(9, callsRemaining);
-    const commentBatch = await getRecentComments(maxComments);
-    for (const c of commentBatch) {
-      if (callsRemaining <= 0) break;
-      const aiReply = await generateAIReplyForText(c.message);
-      const replyData = await replyToComment(c.comment_id, aiReply);
-      log.push({ action: "replyComment", comment_id: c.comment_id, reply: aiReply, result: replyData });
-      callsRemaining -= 1;
+  if (calls > 0) {
+    const posts = await fb.page.list({ page_id: PAGE_ID, limit: 3, request_type: 'feed' });
+    let count = 0;
+    for (const post of posts.data) {
+      if (count >= Math.min(9, calls)) break;
+      const comments = await fb.post.getComments({ post_id: post.id, limit: Math.min(9 - count, calls) });
+      for (const c of comments.data) {
+        if (count >= Math.min(9, calls)) break;
+        const reply = await generateAI(c.message);
+        await fb.comment.reply({ comment_id: c.id, message: reply });
+        log.push({ action: "replyComment", comment_id: c.id });
+        calls -= 1;
+        count += 1;
+      }
     }
   }
 
-  if (callsRemaining > 0) {
-    const maxDMs = Math.min(9, callsRemaining);
-    const convBatch = await getRecentConversations(maxDMs);
-    for (const c of convBatch) {
-      if (callsRemaining <= 0) break;
-      const aiReply = await generateAIReplyForText(c.message);
-      const dmData = await sendDM(c.sender_id, aiReply);
-      log.push({ action: "replyDM", user_id: c.sender_id, reply: aiReply, result: dmData });
-      callsRemaining -= 1;
+  if (calls > 0) {
+    const threads = await fb.thread.list({ limit: calls * 2 });
+    let count = 0;
+    for (const t of threads.data) {
+      if (count >= Math.min(9, calls)) break;
+      if (t.messages_unread > 0 && !t.is_spam) {
+        const msg = await fb.thread.getMessages({ thread_id: t.id, limit: 1 });
+        const last = msg.data[0];
+        if (last.from !== fb.getUserID()) {
+          const reply = await generateAI(last.body);
+          await fb.message.send({ thread_id: t.id, message: { text: reply } });
+          log.push({ action: "replyDM", thread_id: t.id });
+          calls -= 1;
+          count += 1;
+        }
+      }
     }
   }
 
-  return res.status(200).json({ timestamp: new Date().toISOString(), callsRemaining, log });
+  return { timestamp: new Date().toISOString(), callsRemaining: calls, log };
 }
+
+module.exports = async (req, res) => {
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return res.status(405).send("Method Not Allowed");
+  }
+  try {
+    const result = await main();
+    res.status(200).json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+};
