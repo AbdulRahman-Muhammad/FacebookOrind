@@ -13,7 +13,8 @@
     "datakund": "^1.0.27",
     "node-fetch": "^2.7.0",
     "winston": "^3.14.2",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "chrome-aws-lambda": "^10.1.0"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
