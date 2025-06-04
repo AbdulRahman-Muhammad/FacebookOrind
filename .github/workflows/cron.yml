@@ -1,0 +1,13 @@
+name: Cron every minute
+
+on:
+  schedule:
+    - cron: '* * * * *'
+
+jobs:
+  ping-vercel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Vercel Cron Endpoint
+        run: |
+          curl -X GET "https://facebook-orind.vercel.app/api/cron"
