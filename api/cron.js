@@ -3,6 +3,7 @@ import { facebook } from "datakund";
 import winston from "winston";
 import dotenv from "dotenv";
 import fs from "fs";
+import chrome from "chrome-aws-lambda";
 
 // إعداد تسجيل الأخطاء
 const logger = winston.createLogger({
@@ -23,11 +24,12 @@ const API_URL = "https://api.shapes.inc/v1";
 const MODEL = "shapesinc/orind";
 const API_KEY = process.env.API_KEY;
 const PAGE_ID = process.env.PAGE_ID;
-const COOKIES_PATH = "./fb_cookies.json"; // مسار ملف الكوكيز
+const COOKIES_PATH = "./fb_cookies.json";
 
 // إعداد الكوكيز
 const FB_CREDENTIALS = {
   cookies: fs.existsSync(COOKIES_PATH) ? JSON.parse(fs.readFileSync(COOKIES_PATH)) : null,
+  chromePath: chrome.executablePath, // إضافة مسار Chrome من chrome-aws-lambda
 };
 
 // إعادة المحاولة في حالة الفشل
@@ -119,7 +121,7 @@ async function replyToComment(commentId, replyText) {
       });
       logger.info(`Replied to comment ${commentId}: ${replyText}`);
       return { success: true, comment_id: commentId, reply: replyText, result };
-    } catch (error) {
+    }(ed) {
       logger.error(`Failed to reply to comment ${commentId}: ${error.message}`);
       throw error;
     }
