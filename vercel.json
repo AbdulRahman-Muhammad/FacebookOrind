@@ -8,8 +8,14 @@
   ],
   "routes": [
     {
-      "src": "/api/cron",
+      "src": "/(.*)",
       "dest": "api/cron.js"
     }
-  ]
+  ],
+  "functions": {
+    "api/cron.js": {
+      "memory": 512,
+      "maxDuration": 30
+    }
+  }
 }
