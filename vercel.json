@@ -6,11 +6,10 @@
       "use": "@vercel/node"
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/$1"
+      "src": "/api/cron",
+      "dest": "api/cron.js"
     }
-  ],
-  "cleanUrls": false
+  ]
 }
