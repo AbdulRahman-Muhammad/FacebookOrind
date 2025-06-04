@@ -1,12 +1,14 @@
+// package.json
 {
-  "name": "collepedia-fb-bot",
+  "name": "facebook-automation-bot",
   "version": "1.0.0",
   "main": "api/cron.js",
   "scripts": {
     "start": "vercel dev"
   },
   "dependencies": {
-    "facebook-unofficial-api": "^1.0.0",
+    "facebook-private-api": "^1.0.0",
+    "fbjs-skm": "^1.0.0",
     "node-fetch": "^2.6.7"
   }
 }
