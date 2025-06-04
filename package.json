@@ -1,7 +1,7 @@
 {
   "name": "orind-fb-bot",
   "version": "1.0.0",
-  "description": "Automated Facebook page posting and interaction bot using Puppeteer",
+  "description": "Automated Facebook page posting and interaction bot using datakund",
   "main": "api/cron.js",
   "scripts": {
     "start": "node api/cron.js",
@@ -10,7 +10,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "puppeteer": "^23.4.1",
+    "datakund": "^1.0.27",
     "node-fetch": "^2.7.0",
     "winston": "^3.14.2",
     "dotenv": "^16.4.5"
