@@ -121,7 +121,7 @@ async function replyToComment(commentId, replyText) {
       });
       logger.info(`Replied to comment ${commentId}: ${replyText}`);
       return { success: true, comment_id: commentId, reply: replyText, result };
-    }(ed) {
+    } catch (error) {
       logger.error(`Failed to reply to comment ${commentId}: ${error.message}`);
       throw error;
     }
