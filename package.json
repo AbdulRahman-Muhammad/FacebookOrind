@@ -1,0 +1,12 @@
+{
+  "name": "collepedia-fb-bot",
+  "version": "1.0.0",
+  "main": "api/cron.js",
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7",
+    "openai": "^4.7.0"
+  }
+}
