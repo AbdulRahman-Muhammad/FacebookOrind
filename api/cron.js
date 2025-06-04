@@ -1,7 +1,8 @@
 import fetch from "node-fetch";
-import puppeteer from "puppeteer";
+import { facebook } from "datakund";
 import winston from "winston";
 import dotenv from "dotenv";
+import fs from "fs";
 
 // إعداد تسجيل الأخطاء
 const logger = winston.createLogger({
@@ -22,21 +23,15 @@ const API_URL = "https://api.shapes.inc/v1";
 const MODEL = "shapesinc/orind";
 const API_KEY = process.env.API_KEY;
 const PAGE_ID = process.env.PAGE_ID;
+const COOKIES_PATH = "./fb_cookies.json"; // مسار ملف الكوكيز
+
+// إعداد الكوكيز
 const FB_CREDENTIALS = {
-  email: process.env.FB_EMAIL,
-  password: process.env.FB_PASSWORD,
+  cookies: fs.existsSync(COOKIES_PATH) ? JSON.parse(fs.readFileSync(COOKIES_PATH)) : null,
 };
 
-// إعداد Puppeteer
-async function launchBrowser() {
-  return await puppeteer.launch({
-    headless: true, // تشغيل بدون واجهة للـ production
-    args: ["--no-sandbox", "--disable-setuid-sandbox"], // تحسين الأداء
-  });
-}
-
 // إعادة المحاولة في حالة الفشل
-async function withRetry(fn, retries = 3, delay = 1000) {
+async function withRetry(fn, retries = 3, delay = 2000) {
   for (let i = 0; i < retries; i++) {
     try {
       return await fn();
@@ -63,6 +58,7 @@ async function generateSinglePost() {
         messages: [{ role: "user", content: "اكتب لي منشور قصير للصفحة: جملة أو جملتين." }],
       }),
     });
+    if (!resp.ok) throw new Error(`API call failed: ${resp.status}`);
     const data = await resp.json();
     const text = data.choices[0].message.content.split(/\r?\n/)[0].trim();
     return text || "منشور افتراضي";
@@ -77,151 +73,94 @@ async function generatePostContent() {
 
 async function publishNewPost(message) {
   return withRetry(async () => {
-    const browser = await launchBrowser();
     try {
-      const page = await browser.newPage();
-      await page.goto("https://www.facebook.com", { waitUntil: "networkidle2" });
-
-      // تسجيل الدخول
-      await page.type("#email", FB_CREDENTIALS.email);
-      await page.type("#pass", FB_CREDENTIALS.password);
-      await page.click('button[name="login"]');
-      await page.waitForNavigation({ waitUntil: "networkidle2" });
-
-      // الانتقال للصفحة
-      await page.goto(`https://www.facebook.com/${PAGE_ID}`, { waitUntil: "networkidle2" });
-
-      // كتابة المنشور
-      await page.click('div[role="button"][aria-label*="اكتب منشورًا"]');
-      await page.waitForSelector('div[role="textbox"]');
-      await page.type('div[role="textbox"]', message);
-      await page.click('button[aria-label="نشر"]');
-      await page.waitForTimeout(2000); // انتظار تأكيد النشر
-
+      const result = await facebook.facebook__auto__post({
+        page_id: PAGE_ID,
+        message: message,
+        credentials: FB_CREDENTIALS,
+      });
       logger.info(`Published post: ${message}`);
-      return { success: true, message };
+      return { success: true, message, result };
     } catch (error) {
       logger.error(`Failed to publish post: ${error.message}`);
       throw error;
-    } finally {
-      await browser.close();
     }
   });
 }
 
 async function getRecentComments(limit = 9) {
   return withRetry(async () => {
-    const browser = await launchBrowser();
     try {
-      const page = await browser.newPage();
-      await page.goto(`https://www.facebook.com/${PAGE_ID}/posts`, { waitUntil: "networkidle2" });
-
-      // جلب التعليقات
-      const comments = await page.evaluate((limit) => {
-        const commentElements = document.querySelectorAll('div[role="article"] span[dir="auto"]');
-        return Array.from(commentElements)
-          .slice(0, limit)
-          .map((el) => ({
-            comment_id: el.closest('div[role="article"]')?.id || "unknown",
-            message: el.textContent.trim(),
-          }));
-      }, limit);
-
-      logger.info(`Fetched ${comments.length} comments`);
-      return comments;
+      const comments = await facebook.facebook__get__comments({
+        page_id: PAGE_ID,
+        limit: limit,
+        credentials: FB_CREDENTIALS,
+      });
+      const formattedComments = comments.map((c) => ({
+        comment_id: c.id || `temp_${Math.random()}`,
+        message: c.message,
+      }));
+      logger.info(`Fetched ${formattedComments.length} comments`);
+      return formattedComments;
     } catch (error) {
       logger.error(`Failed to fetch comments: ${error.message}`);
       throw error;
-    } finally {
-      await browser.close();
     }
   });
 }
 
 async function replyToComment(commentId, replyText) {
   return withRetry(async () => {
-    const browser = await launchBrowser();
     try {
-      const page = await browser.newPage();
-      await page.goto(`https://www.facebook.com/${PAGE_ID}`, { waitUntil: "networkidle2" });
-
-      // الرد على تعليق
-      await page.evaluate(
-        (commentId, replyText) => {
-          const commentBox = document.querySelector(`div[role="article"][id="${commentId}"] textarea`);
-          if (commentBox) {
-            commentBox.value = replyText;
-            commentBox.dispatchEvent(new Event("input", { bubbles: true }));
-            document.querySelector('button[aria-label="تعليق"]').click();
-          }
-        },
-        commentId,
-        replyText
-      );
-      await page.waitForTimeout(2000);
-
+      const result = await facebook.facebook__auto__comment({
+        comment_id: commentId,
+        message: replyText,
+        credentials: FB_CREDENTIALS,
+      });
       logger.info(`Replied to comment ${commentId}: ${replyText}`);
-      return { success: true, comment_id: commentId, reply: replyText };
+      return { success: true, comment_id: commentId, reply: replyText, result };
     } catch (error) {
       logger.error(`Failed to reply to comment ${commentId}: ${error.message}`);
       throw error;
-    } finally {
-      await browser.close();
     }
   });
 }
 
 async function getRecentConversations(limit = 9) {
   return withRetry(async () => {
-    const browser = await launchBrowser();
     try {
-      const page = await browser.newPage();
-      await page.goto(`https://www.facebook.com/${PAGE_ID}/inbox`, { waitUntil: "networkidle2" });
-
-      // جلب المحادثات
-      const conversations = await page.evaluate((limit) => {
-        const messages = document.querySelectorAll('div[role="row"] a[href*="/t/"]');
-        return Array.from(messages)
-          .slice(0, limit)
-          .map((msg) => ({
-            thread_id: msg.href.split("/t/")[1] || "unknown",
-            sender_id: "unknown", // Puppeteer مش بيجيب sender_id بسهولة، ممكن تحتاج API إضافي هنا
-            message: msg.textContent.trim(),
-          }));
-      }, limit);
-
-      logger.info(`Fetched ${conversations.length} conversations`);
-      return conversations;
+      const conversations = await facebook.facebook__get__conversations({
+        page_id: PAGE_ID,
+        limit: limit,
+        credentials: FB_CREDENTIALS,
+      });
+      const formattedConversations = conversations.map((c) => ({
+        thread_id: c.id || `temp_${Math.random()}`,
+        sender_id: c.from_id || "unknown",
+        message: c.message,
+      }));
+      logger.info(`Fetched ${formattedConversations.length} conversations`);
+      return formattedConversations;
     } catch (error) {
       logger.error(`Failed to fetch conversations: ${error.message}`);
       throw error;
-    } finally {
-      await browser.close();
     }
   });
 }
 
 async function sendDM(recipientId, text) {
   return withRetry(async () => {
-    const browser = await launchBrowser();
     try {
-      const page = await browser.newPage();
-      await page.goto(`https://www.facebook.com/messages/t/${recipientId}`, {
-        waitUntil: "networkidle2",
+      const result = await facebook.facebook__auto__message({
+        recipient_id: recipientId,
+        message: text,
+        credentials: FB_CREDENTIALS,
       });
-
-      // إرسال رسالة مباشرة
-      await page.type('div[role="textbox"]', text);
-      await page.keyboard.press("Enter");
-      await page.waitForTimeout(2000);
-
       logger.info(`Sent DM to ${recipientId}: ${text}`);
-      return { success: true, recipient_id: recipientId, text };
+      return { success: true, recipient_id: recipientId, text, result };
     } catch (error) {
       logger.error(`Failed to send DM to ${recipientId}: ${error.message}`);
       throw error;
-    } finally {
-      await browser.close();
     }
   });
 }
@@ -241,6 +180,7 @@ async function generateAIReplyForText(userText) {
         messages: [{ role: "user", content: userText }],
       }),
     });
+    if (!resp.ok) throw new Error(`API call failed: ${resp.status}`);
     const data = await resp.json();
     return data.choices[0].message.content.split(/\r?\n/)[0].trim() || "عذراً، لا يمكنني الرد الآن.";
   });
@@ -256,6 +196,12 @@ export default async function handler(req, res) {
   const log = [];
 
   try {
+    // التحقق من وجود الكوكيز
+    if (!FB_CREDENTIALS.cookies) {
+      logger.error("Cookies file not found or invalid");
+      return res.status(500).json({ error: "Cookies file not found or invalid" });
+    }
+
     // نشر منشورات
     if (callsRemaining >= 2) {
       const [post1, post2] = await generatePostContent();
