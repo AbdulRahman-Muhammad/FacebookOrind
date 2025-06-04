@@ -1,5 +1,6 @@
 import fetch from "node-fetch";
-import { facebook } from "datakund";
+import datakund from "datakund";
+const { facebook } = datakund;
 import winston from "winston";
 import dotenv from "dotenv";
 import fs from "fs";
