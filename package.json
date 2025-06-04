@@ -1,6 +1,7 @@
 {
   "name": "orind-fb-bot",
   "version": "1.0.0",
+  "type": "module",
   "description": "Automated Facebook page posting and interaction bot using datakund",
   "main": "api/cron.js",
   "scripts": {
