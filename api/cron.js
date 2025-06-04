@@ -3,9 +3,9 @@ import fetch from "node-fetch";
 const API_URL = 'https://api.shapes.inc/v1';
 const MODEL = 'shapesinc/orind';
 const API_KEY = 'HV1YWAUTBSH8USNZOZ6DXX6BHX9K3YKLNPLKBC816E0';
-const PAGE_TOKEN = '<PAGE_ACCESS_TOKEN>';
-const PAGE_ID = '<PAGE_ID>';
-const GRAPH_BASE = `https://graph.facebook.com/v16.0`;
+const PAGE_TOKEN = 'EAA417ArZBgbEBO5qjpZBpzopB8RZATVZCQ9WLbDn4BuRkJRRF13fXe0g8timSW7w9jQ17WIOtTSQ4YoE2QxLxZBVAsffQjlqiheE7AZBkCwbUf2NxwW07oLFmpk2BxWGr9XaKeXrsTOrRKXmuLJvMDKbSoFQ0nC8inar0sNZAPZBfZCYRVMpQLU5msuVPZCefPDZAcFsgF0khrdj70rCKF7LZClgtsfYbctg';
+const PAGE_ID = '604075112798536';
+const GRAPH_BASE = `https://graph.facebook.com/v23.0`;
 
 async function generateSinglePost() {
   const resp = await fetch(`${API_URL}/chat/completions`, {
